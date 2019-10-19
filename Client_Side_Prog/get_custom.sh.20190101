@@ -1,0 +1,73 @@
+#!/bin/sh
+cd /data1/TAS_DB/APP/VoLTE/
+ALTIBASE_HOME=/altibase/altibase-server-5.5.1
+date=$(date +'%Y%m%d%H')
+IFS="
+"
+#$(echo ${1} | sed -e "s/+/ /g" | sed -e "s/,/||' '||/g" > get_custom.sql)
+$(echo >set1.txt)
+$(echo ${1} | sed -e "s/+/ /g" > get_custom.sql)
+
+$ALTIBASE_HOME/bin/isql -silent -s ${2} -u 'user' -p 'password' -port 20300 -nls_use US7ASCII -o set1.txt << EOF
+@get_custom.sql
+EOF
+$(echo >setraw_custom_${3}.txt)
+$(echo >setbr_custom_${3}.txt)
+#$(cat set1.txt > setraw_custom_${3}.txt)
+for i in 1;
+do	
+	grep -v -E "\---|iSQL" set${i}.txt >> setraw_custom_${3}.txt
+	#sed '1d' set${i}.txt | sed '2,3d' > setraw_custom_${3}.txt 
+	$(rm -f set${i}.txt)
+done		
+for i in $(cat serverlist.txt | cut -d" " -f1);
+do
+	if [ "$i" == "${2}" ];then
+		set=$(grep "$i" serverlist.txt | cut -d" " -f2)
+	fi	
+done
+$(grep -i 'ERR' setraw_custom_${3}.txt)
+if [ $? == 1 ];then
+	echo "<table>" >setbr_custom_${3}.txt
+	for line in $(head -n100 setraw_custom_${3}.txt);
+	do
+		line1=$(echo ${line} | cut -d" " -f1)
+		if [ $? == 0 ];then
+			line1=$(echo $line1 | sed -e "s/||'//g")
+			echo "<tr><td>${set}</td><td>${line1}</td>" >> setbr_custom_${3}.txt
+			line2=$(echo ${line} | cut -d" " -f2)
+		fi		
+		if [ $? == 0 ];then
+			line2=$(echo $line2 | sed -e "s/'||//g" | sed -e "s/||'//g")
+			echo "<td>${line2}</td>" >> setbr_custom_${3}.txt
+			line3=$(echo -n ${line} | cut -d" " -f3)
+		fi
+		if [ $? == 0 ];then
+			line3=$(echo $line3 | sed -e "s/'||//g" | sed -e "s/||'//g")
+			echo "<td>${line3}</td>" >> setbr_custom_${3}.txt
+		fi
+		echo "</tr>" >> setbr_custom_${3}.txt
+
+	done	
+	#echo "</table>" >> setbr_custom_${3}.txt
+else
+	echo "<table><tr><td>${set}</td><td>Error Message</td></tr>" >setbr_custom_${3}.txt
+	for line in $(head -n100 setraw_custom_${3}.txt);
+	do
+		line1=$(echo ${line})
+		echo "<tr><td>${set}</td><td>${line1}</td></tr>">>setbr_custom_${3}.txt
+	done
+fi
+echo "</table>" >> setbr_custom_${3}.txt
+
+
+
+
+
+
+
+
+
+
+
+

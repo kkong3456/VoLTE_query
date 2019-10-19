@@ -1,0 +1,72 @@
+#!/bin/sh
+cd /data1/TAS_DB/APP/VoLTE/
+ALTIBASE_HOME=/altibase/altibase-server-5.5.1
+date=$(date +'%Y%m%d%H')
+IFS="
+"
+$(echo > setraw_custom_${2}.txt) 
+$(echo > setbr_custom_${2}.txt)
+$(echo ${1} | sed -e "s/+/ /g" >  get_custom.sql)
+for ip in $(cat serverlist.txt | cut -d" " -f1);
+do
+	$ALTIBASE_HOME/bin/isql -silent -s $ip -u 'user' -p 'password' -port 20300 -nls_use US7ASCII -o set1.txt << EOF
+	@get_custom.sql
+EOF
+	grep -v -E "\---|iSQL" set1.txt > setraw_custom_${ip}.txt
+	#sed '1d' set1.txt | sed '2,3d' > setraw_custom_${2}.txt 
+	set=$(grep "$ip" serverlist.txt | cut -d" " -f2)
+
+	for s in $(cat setraw_custom_${ip}.txt);
+	do
+		echo "$set"' '"$s" >>setraw_custom_tmp.txt
+	done
+
+	$(grep -i 'ERR' setraw_custom_${ip}.txt)
+	if [ $? == 1 ];then
+		echo "<table>" > setbr_custom_${ip}.txt
+		for line in $(head -n100 setraw_custom_${ip}.txt);
+		do
+			line1=$(echo ${line} | cut -d" " -f1)
+			if [ $? == 0 ];then
+				line1=$(echo $line1 | sed -e "s/||'//g")
+				echo "<tr><td>${set}</td><td>${line1}</td>" >> setbr_custom_${ip}.txt
+				line2=$(echo ${line} | cut -d" " -f2)
+			fi		
+			if [ $? == 0 ];then
+				line2=$(echo $line2 | sed -e "s/'||//g" | sed -e "s/||'//g")
+				echo "<td>${line2}</td>" >> setbr_custom_${ip}.txt
+				line3=$(echo -n ${line} | cut -d" " -f3)
+			fi
+			if [ $? == 0 ];then
+				
+				line3=$(echo $line3 | sed -e "s/'||//g" | sed -e "s/||'//g")
+				echo "<td>${line3}</td>" >> setbr_custom_${ip}.txt
+			fi
+			echo "</tr>" >> setbr_custom_${ip}.txt
+
+		done
+	else
+		echo "<table><tr><td>${set}</td><td>Error Message</td></tr>" >setbr_custom_${ip}.txt
+		for line in $(head -n100 setraw_custom_${ip}.txt);
+		do
+			line1=$(echo ${line})
+			echo "<tr><td>${set}</td><td>${line1}</td></tr>" >> setbr_custom_${ip}.txt
+		done
+	fi
+	echo "</table>" >> setbr_custom_${ip}.txt
+	cat setbr_custom_${ip}.txt >> setbr_custom_${2}.txt
+	cat setraw_custom_tmp.txt >> setraw_custom_${2}.txt 
+	rm -f setbr_custom_${ip}.txt setraw_custom_${ip}.txt set1.txt setraw_custom_tmp.txt
+done
+
+
+
+
+
+
+
+
+
+
+
+
